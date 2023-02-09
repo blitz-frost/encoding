@@ -1,6 +1,10 @@
 package msg
 
 import (
+	"errors"
+	"io"
+	"reflect"
+
 	"github.com/blitz-frost/encoding"
 	msgio "github.com/blitz-frost/io/msg"
 	"github.com/blitz-frost/msg"
@@ -44,22 +48,44 @@ func (x *exchangeReaderChainer) ReaderTake(er msgio.ExchangeReader) error {
 }
 
 type exchangeWriter struct {
-	Writer
-	readerGiver
+	w  Writer
+	c  msg.Closer // underlying msgio.ExchangeWriter Close method
+	rg readerGiver
 }
 
 func makeExchangeWriter(ew msgio.ExchangeWriter, codec encoding.Codec) (exchangeWriter, error) {
-	enc, err := codec.Encoder(ew)
+	// the encoder sees a regular writer that it might try to close when finished
+	// but for an ExchangeWriter that means canceling the message, so we mask it
+	enc, err := codec.Encoder(noCloseWriter{ew})
 	if err != nil {
 		return exchangeWriter{}, err
 	}
 	return exchangeWriter{
-		Writer: enc,
-		readerGiver: readerGiver{
+		w: enc,
+		c: ew,
+		rg: readerGiver{
 			rg:    ew,
 			codec: codec,
 		},
 	}, nil
+}
+
+func (x exchangeWriter) Close() error {
+	if c, ok := x.w.(msg.Canceler); ok {
+		return c.Cancel()
+	}
+	return errors.Join(x.w.Close(), x.c.Close())
+}
+
+func (x exchangeWriter) Encode(v reflect.Value) error {
+	return x.w.Encode(v)
+}
+
+func (x exchangeWriter) Reader() (Reader, error) {
+	if err := x.w.Close(); err != nil {
+		return nil, err
+	}
+	return x.rg.Reader()
 }
 
 type exchangeWriterGiver struct {
@@ -73,6 +99,14 @@ func (x exchangeWriterGiver) Writer() (ExchangeWriter, error) {
 		return nil, err
 	}
 	return makeExchangeWriter(w, x.codec)
+}
+
+type noCloseWriter struct {
+	io.Writer
+}
+
+func (x noCloseWriter) Close() error {
+	return nil
 }
 
 type readerChainer struct {
