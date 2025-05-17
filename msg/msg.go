@@ -1,38 +1,50 @@
 package msg
 
 import (
-	"github.com/blitz-frost/encoding"
-	"github.com/blitz-frost/msg"
+	"reflect"
+
+	"github.com/blitz-frost/io/msg"
 )
 
-type Conn = msg.Conn[Reader, Writer]
+type Decoder func(reflect.Type) (reflect.Value, error)
 
-type ExchangeConn = msg.Conn[ExchangeReader, ExchangeWriter]
+type Encoder func(reflect.Value) error
 
-type ExchangeReader interface {
-	Reader
-	WriterGiver
+type ExchangeInlet func() (ExchangeInput, error)
+
+type ExchangeInput struct {
+	Decode Decoder
+	Close  msg.Closer
+	Output Outlet
+	Cancel msg.Canceler
 }
 
-type ExchangeReaderChainer = msg.ReaderChainer[ExchangeReader]
+type ExchangeInputTaker func(ExchangeInput) error
 
-type ExchangeReaderTaker = msg.ReaderTaker[ExchangeReader]
+type ExchangeOutlet func() (ExchangeOutput, error)
 
-type ExchangeWriter interface {
-	Writer
-	ReaderGiver
+type ExchangeOutput struct {
+	Encode Encoder
+	Close  msg.Closer
+	Input  Inlet
+	Cancel msg.Canceler
 }
 
-type ExchangeWriterGiver = msg.WriterGiver[ExchangeWriter]
+type Inlet func() (Input, error)
 
-type Reader = encoding.Decoder
+type Input struct {
+	Decode Decoder
+	Close  msg.Closer
+}
 
-type ReaderChainer = msg.ReaderChainer[Reader]
+type InputTaker func(Input) error
 
-type ReaderGiver = msg.ReaderGiver[Reader]
+type Outlet func() (Output, error)
 
-type ReaderTaker = msg.ReaderTaker[Reader]
+type Output struct {
+	Encode Encoder
+	Close  msg.Closer
 
-type Writer = encoding.Encoder
-
-type WriterGiver = msg.WriterGiver[Writer]
+	// optional
+	Cancel msg.Canceler
+}

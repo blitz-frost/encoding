@@ -6,23 +6,12 @@ package encoding
 
 import (
 	"reflect"
-
-	"github.com/blitz-frost/io"
 )
-
-type Closer = io.Closer
-
-type Codec interface {
-	Decoder(io.Reader) (Decoder, error)
-	Encoder(io.Writer) (Encoder, error)
-}
 
 type Decoder interface {
 	Decode(reflect.Type) (reflect.Value, error)
-	Closer
 }
 
 type Encoder interface {
 	Encode(reflect.Value) error
-	Closer
 }

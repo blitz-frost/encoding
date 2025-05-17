@@ -6,3 +6,5 @@ require (
 	github.com/blitz-frost/io v0.2.6
 	github.com/blitz-frost/msg v0.1.1
 )
+
+replace github.com/blitz-frost/bytes => /home/bogdan/projects/bytes
