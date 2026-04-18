@@ -2,9 +2,8 @@ package json
 
 import (
 	"encoding/json"
+	"io"
 	"reflect"
-
-	"github.com/blitz-frost/io"
 )
 
 type Decoder struct {
